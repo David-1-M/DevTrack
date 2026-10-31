@@ -14,4 +14,9 @@ public class Project
 
     public ICollection<WorkTask> Tasks { get; set; }
         = new List<WorkTask>();
+
+    public string? OwnerId { get; set; }
+
+    public ApplicationUser? Owner { get; set; }
+
 }

@@ -13,6 +13,7 @@ public class CreateWorkTaskDto
     [StringLength(1000)]
     public string? Description { get; set; }
 
+    [Range(1, int.MaxValue)]
     public int ProjectId { get; set; }
 
     public WorkTaskStatus Status { get; set; }

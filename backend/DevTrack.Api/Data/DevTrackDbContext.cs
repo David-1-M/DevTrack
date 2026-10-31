@@ -3,10 +3,12 @@ using DevTrackAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Reflection.Emit;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace DevTrackAPI.Data;
 
-public class DevTrackDbContext : DbContext
+public class DevTrackDbContext
+    : IdentityDbContext<ApplicationUser>
 {
     public DevTrackDbContext(
         DbContextOptions<DevTrackDbContext> options)
@@ -43,6 +45,14 @@ public class DevTrackDbContext : DbContext
                 .HasForeignKey(t => t.ProjectId)
                 .IsRequired()
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(p => p.Owner)
+                .WithMany(u => u.Projects)
+                .HasForeignKey(p => p.OwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(p => p.OwnerId);
+
         });
 
         // WorkTask configuration
