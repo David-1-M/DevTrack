@@ -1,6 +1,9 @@
-﻿namespace DevTrack.Api.Models
+﻿
+namespace DevTrackAPI.Models;
+
+public enum WorkTaskStatus
 {
-    public class WorkTaskStatus
-    {
-    }
+    ToDo = 0,
+    InProgress = 1,
+    Completed = 2
 }

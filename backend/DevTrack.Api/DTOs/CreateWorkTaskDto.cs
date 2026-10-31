@@ -1,6 +1,22 @@
-﻿namespace DevTrack.Api.DTOs
+﻿
+using System.ComponentModel.DataAnnotations;
+using DevTrackAPI.Models;
+
+namespace DevTrackAPI.DTOs;
+
+public class CreateWorkTaskDto
 {
-    public class CreateWorkTaskDto
-    {
-    }
+    [Required]
+    [StringLength(150, MinimumLength = 3)]
+    public string Title { get; set; } = string.Empty;
+
+    [StringLength(1000)]
+    public string? Description { get; set; }
+
+    public int ProjectId { get; set; }
+
+    public WorkTaskStatus Status { get; set; }
+        = WorkTaskStatus.ToDo;
+
+    public DateTime? DueDate { get; set; }
 }
