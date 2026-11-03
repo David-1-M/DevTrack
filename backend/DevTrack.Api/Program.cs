@@ -139,3 +139,5 @@ static async Task EnsureRolesAsync(
         }
     }
 }
+
+public partial class Program { }
