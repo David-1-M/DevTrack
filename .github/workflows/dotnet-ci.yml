@@ -1,0 +1,30 @@
+
+name: DevTrack API CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore tests/DevTrack.Api.Tests/DevTrack.Api.Tests.csproj
+
+      - name: Build application and tests
+        run: dotnet build tests/DevTrack.Api.Tests/DevTrack.Api.Tests.csproj --configuration Release --no-restore
+
+      - name: Run unit tests
+        run: dotnet test tests/DevTrack.Api.Tests/DevTrack.Api.Tests.csproj --configuration Release --no-build
