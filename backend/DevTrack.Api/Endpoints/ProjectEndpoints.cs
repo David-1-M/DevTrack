@@ -17,20 +17,42 @@ public static class ProjectEndpoints
             .WithTags("Projects")
             .RequireAuthorization();
 
-        // GET /api/projects
+        // GET /api/projects?page=1&pageSize=10&search=api
         group.MapGet("/", async (
             ClaimsPrincipal user,
-            DevTrackDbContext db) =>
+            DevTrackDbContext db,
+            int? page,
+            int? pageSize,
+            string? search) =>
         {
             var userId = user.FindFirstValue("sub");
 
             if (userId is null)
                 return Results.Unauthorized();
 
-            var projects = await db.Projects
+            if (!ProjectListQuery.TryCreate(
+                    page, pageSize, search, out var query, out var error))
+            {
+                return Results.BadRequest(new { Message = error });
+            }
+
+            // Ownership is applied before both counting and pagination.
+            var projectsQuery = db.Projects
                 .AsNoTracking()
-                .Where(p => p.OwnerId == userId)
+                .Where(p => p.OwnerId == userId);
+
+            if (query.Search is not null)
+            {
+                projectsQuery = projectsQuery.Where(
+                    p => p.Name.Contains(query.Search));
+            }
+
+            var totalCount = await projectsQuery.CountAsync();
+
+            var projects = await projectsQuery
                 .OrderBy(p => p.Id)
+                .Skip(query.Skip)
+                .Take(query.PageSize)
                 .Select(p => new
                 {
                     p.Id,
@@ -41,7 +63,15 @@ public static class ProjectEndpoints
                 })
                 .ToListAsync();
 
-            return Results.Ok(projects);
+            return Results.Ok(new
+            {
+                Items = projects,
+                query.Page,
+                query.PageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(
+                    (double)totalCount / query.PageSize)
+            });
         });
 
         // GET /api/projects/{id}
