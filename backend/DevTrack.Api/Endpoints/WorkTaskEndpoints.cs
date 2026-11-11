@@ -17,6 +17,84 @@ public static class WorkTaskEndpoints
             .WithTags("Tasks")
             .RequireAuthorization();
 
+        // GET /api/tasks?status=InProgress&projectId=1&sortBy=dueDate&sortOrder=asc
+        group.MapGet("/", async (
+            ClaimsPrincipal user,
+            DevTrackDbContext db,
+            string? status,
+            int? projectId,
+            string? sortBy,
+            string? sortOrder,
+            int? page,
+            int? pageSize) =>
+        {
+            var userId = user.FindFirstValue("sub");
+
+            if (userId is null)
+                return Results.Unauthorized();
+
+            if (!TaskListQuery.TryCreate(
+                    status, projectId, sortBy, sortOrder,
+                    page, pageSize, out var query, out var error))
+            {
+                return Results.BadRequest(new { Message = error });
+            }
+
+            // Scope the query to the current owner before filtering or counting.
+            var tasksQuery = db.WorkTasks
+                .AsNoTracking()
+                .Where(t => t.Project!.OwnerId == userId);
+
+            if (query.Status.HasValue)
+                tasksQuery = tasksQuery.Where(t => t.Status == query.Status.Value);
+
+            if (query.ProjectId.HasValue)
+                tasksQuery = tasksQuery.Where(t => t.ProjectId == query.ProjectId.Value);
+
+            var totalCount = await tasksQuery.CountAsync();
+
+            var ordered = query.SortBy switch
+            {
+                "dueDate" when query.Descending =>
+                    tasksQuery.OrderBy(t => t.DueDate == null)
+                        .ThenByDescending(t => t.DueDate)
+                        .ThenBy(t => t.Id),
+                "dueDate" =>
+                    tasksQuery.OrderBy(t => t.DueDate == null)
+                        .ThenBy(t => t.DueDate)
+                        .ThenBy(t => t.Id),
+                _ when query.Descending => tasksQuery.OrderByDescending(t => t.CreatedAt)
+                    .ThenBy(t => t.Id),
+                _ => tasksQuery.OrderBy(t => t.CreatedAt)
+                    .ThenBy(t => t.Id)
+            };
+
+            var tasks = await ordered
+                .Skip(query.Skip)
+                .Take(query.PageSize)
+                .Select(t => new
+                {
+                    t.Id,
+                    t.Title,
+                    t.Description,
+                    Status = t.Status.ToString(),
+                    t.CreatedAt,
+                    t.DueDate,
+                    t.ProjectId
+                })
+                .ToListAsync();
+
+            return Results.Ok(new
+            {
+                Items = tasks,
+                query.Page,
+                query.PageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(
+                    (double)totalCount / query.PageSize)
+            });
+        });
+
         // GET /api/tasks/{id}
         group.MapGet("/{id:int}", async (
             int id,
